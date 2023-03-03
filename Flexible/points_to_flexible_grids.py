@@ -69,9 +69,26 @@ class FGP:
         print("Base Longitude Delta: {}".format(self.delta_lon[0]))
         print("Actual Grid Size: {}km by {}km".format(np.round(self.lon_per_deg*self.delta_lon[0], 3), np.round(self.lat_per_deg*self.delta_lat[0], 3)))
         print("-----------------------------------------")
+    
+    def generate(self, locations: pd.DataFrame, existingGrids: list[pd.DataFrame]):
+        # for all levels
+        current = locations.copy()
+        result = []
+        for level in range(self.levels): #zero based
+            res = self._generateLevel(current, existingGrids[level], level + 1)
+            result.append(res)
 
-    def generate(self, data: pd.DataFrame, existingGrids: pd.DataFrame):
-        locations = data.copy()
+            #for next iteration
+            if level < self.levels - 1:
+                current = res.copy()
+                current = current[current.parentID == -1]
+                current = current[['parent_lon', 'parent_lat']]
+                current = current.drop_duplicates().reset_index(drop=True)
+                current.columns = ['longitude', 'latitude']
+
+        return result
+
+    def _generateLevel(self, locations: pd.DataFrame, existingGrids: pd.DataFrame, parent_level: int = 1):
         locs_array = locations[['longitude','latitude']].to_numpy()
         loclen = len(locs_array)
         parentIDs = np.full(loclen, -1)
@@ -83,8 +100,8 @@ class FGP:
         parents_array = np.array([])
         new_parents = np.array([])
         if existingGrids is not None:
-            # parentGrids = self._updateParentBoudaries(existingGrids, 1)
-            parents_array = existingGrids[['id', 'centerLon', 'centerLat', 'upperLon', 'lowerLon', 'upperLat', 'lowerLat']].to_numpy()
+            parentGrids = self._updateParentBoudaries(existingGrids, parent_level)
+            parents_array = parentGrids[['id', 'centerLon', 'centerLat', 'upperLon', 'lowerLon', 'upperLat', 'lowerLat']].to_numpy()
 
         for i in range(len(locs_array)):
             # print("---")
@@ -102,7 +119,7 @@ class FGP:
                 parent_lat[i] = new_parents[parentID][2]
             else: # totally fresh one
                 # create new grid
-                upperLon, lowerLon, upperLat, lowerLat = self._getNewGridParams(each_lon, each_lat, 1)
+                upperLon, lowerLon, upperLat, lowerLat = self._getNewGridParams(each_lon, each_lat, parent_level)
                 if len(new_parents) == 0:
                     # new one
                     new_parents = np.array([[0, each_lon, each_lat, upperLon, lowerLon, upperLat, lowerLat]])
@@ -142,7 +159,6 @@ class FGP:
             level_size = (self.base_size / 2) * math.pow(2, level)
             self.delta_lon.append(np.round((level_size / self.lon_per_deg),self.measurement_sensitivity))
             self.delta_lat.append(np.round((level_size / self.lat_per_deg),self.measurement_sensitivity))
-
 
     def _getNewGridParams(self, lon, lat, level):
         upperLat = lat + self.delta_lat[level-1]
