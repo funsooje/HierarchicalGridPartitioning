@@ -133,6 +133,7 @@ class FGP:
         locations['parentID'] = parentIDs
         locations['parent_lon'] = parent_lon
         locations['parent_lat'] = parent_lat
+        locations['parent_level'] = parent_level
         return locations
 
     def _getDeltas(self, silent: bool):
