@@ -13,10 +13,6 @@ Assumptions:
 import math
 import numpy as np
 import pandas as pd
-from numba import jit
-
-# Global Constants
-
 
 class FGP:
 
@@ -206,10 +202,4 @@ class FGP:
         
         return parents
 
-
-# TODOS:
-# start fresh so you can create new parents with no padding
-# this is just for one level - complete for all levels
-# parents supplied to generate should be an array of levels
-# in the main script figure out logic for handling levels and saving to the database
         
