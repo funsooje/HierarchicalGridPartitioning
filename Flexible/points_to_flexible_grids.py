@@ -61,12 +61,12 @@ class FGP:
         print("Grid Levels: {}".format(self.levels))
         print("Equitorial Radius: {}km".format(self.equatorial_radius))
         print("Polar Radius: {}km".format(self.polar_radius))
-        print("Base Latitude Delta: {}".format(self.delta_lat[0]))
-        print("Base Longitude Delta: {}".format(self.delta_lon[0]))
-        print("Actual Grid Size: {}km by {}km".format(np.round(self.lon_per_deg*self.delta_lon[0], 3), np.round(self.lat_per_deg*self.delta_lat[0], 3)))
+        print("Base Latitude Delta: {}".format(self.delta_lat[0] * 2))
+        print("Base Longitude Delta: {}".format(self.delta_lon[0] * 2))
+        print("Actual Grid Size: {}km by {}km".format(np.round(self.lon_per_deg*self.delta_lon[0] * 2, 3), np.round(self.lat_per_deg*self.delta_lat[0] * 2, 3)))
         print("-----------------------------------------")
-    
-    def generate(self, locations: pd.DataFrame, existingGrids: list[pd.DataFrame]):
+
+    def generate(self, locations: pd.DataFrame, existingGrids: list[pd.DataFrame], newParentsOnly: bool = False):
         # for all levels
         current = locations.copy()
         result = []
@@ -77,10 +77,11 @@ class FGP:
             #for next iteration
             if level < self.levels - 1:
                 current = res.copy()
-                current = current[current.parentID == -1]
-                current = current[['parent_lon', 'parent_lat']]
-                current = current.drop_duplicates().reset_index(drop=True)
-                current.columns = ['longitude', 'latitude']
+                if newParentsOnly:
+                    current = current[current.parentID == -1]
+                current = current[['parentID', 'parent_lon', 'parent_lat']]
+                current.columns = ['id', 'longitude', 'latitude']
+                current = current.drop_duplicates(subset=['longitude', 'latitude']).reset_index(drop=True)
 
         return result
 
