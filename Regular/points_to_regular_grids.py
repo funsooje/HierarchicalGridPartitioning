@@ -113,7 +113,7 @@ class RGP:
         """
         Generate center lon and lat for a given level 
         """
-        data_copy = data.copy()
+        data_copy = data.copy().reset_index(drop=True)
         x_indices = data_copy[xcol].to_numpy().reshape(-1, 1)
         y_indices = data_copy[ycol].to_numpy().reshape(-1, 1)
         cell_indices = np.concatenate((x_indices, y_indices), axis=1)
