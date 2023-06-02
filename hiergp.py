@@ -1,5 +1,5 @@
 """
-Points to Grid
+Hierarchical Grid Partitioning
 
 This is a script that map points on a map to grids with specific sizes.
 
@@ -13,14 +13,9 @@ import math
 import numpy as np
 import pandas as pd
 
-# Global Constants
-#
+class hierGP:
 
-class RGP:
-
-    def __init__(self, base_size: float, levels: int = 1, 
-            sensitivity: int = 4, equatorialRadius: float = 6378.1370, 
-            polarRadius: float = 6356.7523, silent: bool = True):
+    def __init__(self, base_size: float, silent: bool = True):
         
         """
         Main Constructor
@@ -36,91 +31,24 @@ class RGP:
 
         if base_size <= 0:
             raise ValueError("base size {} is invalid! Value must be greater than 0".format(base_size))
-        
-        if levels < 1:
-            raise ValueError("levels {} is invalid! Value must be greater than 0".format(levels))
 
-        self.base_size = base_size
-        self.levels = levels
+        self.base_size = base_size / 1000 # specified in meters
+        self.levels = 15 # max resolution that can specified 
 
-        self.equatorial_radius = equatorialRadius
-        self.polar_radius = polarRadius
+        self.equatorial_radius = 6378.1370
+        self.polar_radius = 6356.7523
         self.lon_per_deg = (self.equatorial_radius * math.pi) / 180
         self.lat_per_deg = (self.polar_radius * math.pi) / 180
 
         self.epicenterLat = 0
         self.epicenterLon = 0
-        self.measurement_sensitivity = sensitivity
+        self.measurement_sensitivity = 20
 
         self.delta_lat = []
         self.delta_lon = []
         self._getDeltas(silent)
 
-    def printConfig(self):
-        """
-        Function for view instance parameters and information
-        """
-        print("-----------------------------------------")
-        print("Regular Point To Grid Configuration")
-        print("-----------------------------------------")
-        print("Base Grid Size: {0}km by {0}km".format(self.base_size))
-        print("Grid Levels: {}".format(self.levels))
-        print("Equitorial Radius: {}km".format(self.equatorial_radius))
-        print("Polar Radius: {}km".format(self.polar_radius))
-        print("Model Center: ({}, {})".format(self.epicenterLat, self.epicenterLon))
-        print("Base Latitude Delta: {}".format(self.delta_lat[0]))
-        print("Base Longitude Delta: {}".format(self.delta_lon[0]))
-        print("Actual Grid Size: {}km by {}km".format(np.round(self.lon_per_deg*self.delta_lon[0], 3), np.round(self.lat_per_deg*self.delta_lat[0], 3)))
-        print("-----------------------------------------")
-
-    def generateGrids(self, data: pd.DataFrame):
-        """
-        Generate the grids and cell indices.
-        Returns an array of all levels of data grid
-        """
-        result = []
-        data_copy = data.copy()
-        lat_array = data_copy['latitude'].to_numpy()
-        lon_array = data_copy['longitude'].to_numpy()
-
-        midpoints = self._getMidpoints(lat_array, lon_array)
-
-        data_copy = data_copy.join(midpoints)
-
-        result.append(data_copy)
-
-        prev = data_copy.copy()
-        prev = prev[["parent_lon", "parent_lat", "parent_x", "parent_y"]]
-        prev = prev.drop_duplicates().reset_index(drop=True)
-        prev.columns = ['longitude', 'latitude', 'x', 'y']
-        for level in range(1, self.levels):
-            lat_array = prev['latitude'].to_numpy()
-            lon_array = prev['longitude'].to_numpy()
-            midpoints = self._getMidpoints(lat_array, lon_array, level)
-            prev = prev.join(midpoints)
-            # prev['level'] = level
-            result.append(prev)
-            if level <= self.levels - 1:
-                prev = prev.copy()
-                prev = prev[["parent_lon", "parent_lat", "parent_x", "parent_y"]]
-                prev = prev.drop_duplicates().reset_index(drop=True)
-                prev.columns = ['longitude', 'latitude', 'x', 'y']
-
-        return result
-
-    def generateCenters(self, data: pd.DataFrame, level: int, xcol: str = 'x', ycol: str = 'y'):
-        """
-        Generate center lon and lat for a given level 
-        """
-        data_copy = data.copy().reset_index(drop=True)
-        x_indices = data_copy[xcol].to_numpy().reshape(-1, 1)
-        y_indices = data_copy[ycol].to_numpy().reshape(-1, 1)
-        cell_indices = np.concatenate((x_indices, y_indices), axis=1)
-        df = self._getMidpointsFromIndices(cell_indices=cell_indices, level=level-1)
-        data_copy['center_lon'] = df['parent_lon']
-        data_copy['center_lat'] = df['parent_lat']
-        return data_copy
-
+    
     def _getDeltas(self, silent: bool):
         """
         Computes lat and lon deltas
@@ -142,6 +70,35 @@ class RGP:
             self.delta_lon.append(np.round((level_size / self.lon_per_deg),self.measurement_sensitivity))
             self.delta_lat.append(np.round((level_size / self.lat_per_deg),self.measurement_sensitivity))
 
+    
+    def printConfig(self):
+        """
+        Function for view instance parameters and information
+        """
+        print("-----------------------------------------")
+        print("Hierarchical Grid Partitioning Configuration")
+        print("-----------------------------------------")
+        print("Base Grid Size: {0}m by {0}m".format(self.base_size * 1000))
+        print("Equitorial Radius: {}km".format(self.equatorial_radius))
+        print("Polar Radius: {}km".format(self.polar_radius))
+        print("-----------------------------------------")
+
+    def generateGrids(self, data: pd.DataFrame, resolution: int, lat: str = "latitude", lon: str = 'longitude'):
+        """
+        Generate the grids and cell indices.
+        Returns an array of all levels of data grid
+        """
+        resolution = resolution - 1
+        data_copy = data.copy()
+        lat_array = data_copy[lat].to_numpy()
+        lon_array = data_copy[lon].to_numpy()
+
+        midpoints = self._getMidpoints(lat_array, lon_array, resolution)
+
+        data_copy = data_copy.join(midpoints)
+
+        return data_copy
+
     def _getMidpoints(self, lat_values: np.array, lon_values: np.array, level: int = 0):
         """
         Computes midpoint of lat and lon arrays
@@ -162,7 +119,7 @@ class RGP:
                 np.concatenate((midpoints, cell_indices), axis=1), columns=["parent_lon", "parent_lat", "parent_x", "parent_y"])
         df.parent_x = df.parent_x.astype('int32')
         df.parent_y = df.parent_y.astype('int32')
-        df['level'] = level
+        df.columns = ["l{}_lon".format(level+1), "l{}_lat".format(level+1), "l{}_x".format(level+1), "l{}_y".format(level+1)]
         return df
 
     def _getCellIndices(self, lat_values: np.array, lon_values: np.array, level: int = 0):
@@ -173,5 +130,5 @@ class RGP:
         norm_lat_values = lat_values - self.epicenterLat
         x_indices = np.floor(norm_lon_values / self.delta_lon[level]).reshape(-1, 1)
         y_indices = np.floor(norm_lat_values / self.delta_lat[level]).reshape(-1, 1)
+
         return np.concatenate((x_indices, y_indices), axis=1)
-        
