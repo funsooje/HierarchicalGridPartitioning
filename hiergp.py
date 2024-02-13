@@ -4,7 +4,7 @@ Hierarchical Grid Partitioning
 This is a script that map points on a map to grids with specific sizes.
 
 Assumptions:
-- Measurements are in kilometres (km) - this will be improved later to include calculations with miles
+- Measurements are in kilometres (km)
 - Grid are squares i.e. a grid size of 0.025 denotes a 25m by 25m base grid size
 """
 
@@ -15,7 +15,7 @@ import pandas as pd
 
 class hierGP:
 
-    def __init__(self, base_size: float, silent: bool = True):
+    def __init__(self, base_size: float, lonshift: float = 0, latshift: float = 0, silent: bool = True):
         
         """
         Main Constructor
@@ -40,8 +40,8 @@ class hierGP:
         self.lon_per_deg = (self.equatorial_radius * math.pi) / 180
         self.lat_per_deg = (self.polar_radius * math.pi) / 180
 
-        self.epicenterLat = 0
-        self.epicenterLon = 0
+        self.epicenterLat = latshift
+        self.epicenterLon = latshift
         self.measurement_sensitivity = 20
 
         self.delta_lat = []
@@ -98,6 +98,27 @@ class hierGP:
         data_copy = data_copy.join(midpoints)
 
         return data_copy
+    
+    def generateCenters(self, data: pd.DataFrame, level: int, xcol: str = 'x', ycol: str = 'y'):
+        """
+        Generate center lon and lat for a given level 
+        """
+        data_copy = data.copy().reset_index(drop=True)
+        x_indices = data_copy[xcol].to_numpy().reshape(-1, 1)
+        y_indices = data_copy[ycol].to_numpy().reshape(-1, 1)
+        cell_indices = np.concatenate((x_indices, y_indices), axis=1)
+        df = self._getMidpointsFromIndices(cell_indices=cell_indices, level=level-1)
+        data_copy = data_copy.join(df)
+        return data_copy
+
+    def generateGridCoords(self, data: pd.DataFrame, level: int, xcol: str = 'x', ycol: str = 'y'):
+        data_copy = data.copy().reset_index(drop=True)
+        x_indices = data_copy[xcol].to_numpy().reshape(-1, 1)
+        y_indices = data_copy[ycol].to_numpy().reshape(-1, 1)
+        cell_indices = np.concatenate((x_indices, y_indices), axis=1)
+        df = self._getGridCoordsFromIndices(cell_indices=cell_indices, level=level-1)
+        data_copy = data_copy.join(df)
+        return data_copy
 
     def _getMidpoints(self, lat_values: np.array, lon_values: np.array, level: int = 0):
         """
@@ -120,6 +141,23 @@ class hierGP:
         df.parent_x = df.parent_x.astype('int32')
         df.parent_y = df.parent_y.astype('int32')
         df.columns = ["l{}_lon".format(level+1), "l{}_lat".format(level+1), "l{}_x".format(level+1), "l{}_y".format(level+1)]
+        return df
+    
+    def _getGridCoordsFromIndices(self, cell_indices: np.array, level: int):
+        lons = np.copy(cell_indices.astype(float))
+        lats = np.copy(cell_indices.astype(float))
+        lons[:, 0] = (self.delta_lon[level] * (cell_indices[:, 0] + 0.5)) + self.epicenterLon + (self.delta_lon[level]/2)
+        lons[:, 1] = lons[:, 0] - self.delta_lon[level]
+        lats[:, 0] = (self.delta_lat[level] * (cell_indices[:, 1] + 0.5)) + self.epicenterLat + (self.delta_lat[level]/2)
+        lats[:, 1] = lats[:, 0] - self.delta_lat[level]
+        
+        both = np.concatenate((lons, lats), axis=1)
+        ll = []
+        for i in range(both.shape[0]):
+            ll.append(((both[i, 0], both[i, 3]), (both[i, 0], both[i, 2]),(both[i, 1], both[i, 2]), (both[i, 1], both[i, 3])))
+
+        df = pd.DataFrame(ll)
+        df = pd.DataFrame(df.apply(lambda row: ', '.join(map(str, row)), axis=1), columns=['poly'])
         return df
 
     def _getCellIndices(self, lat_values: np.array, lon_values: np.array, level: int = 0):
