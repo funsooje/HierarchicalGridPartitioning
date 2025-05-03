@@ -1,5 +1,5 @@
 import utils as ut
-from hiergp import hierGP, dataManager
+from hiergp.hiergp import hierGP, dataManager
 import os
 import matplotlib.pyplot as plt
 
