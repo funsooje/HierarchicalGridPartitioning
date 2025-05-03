@@ -7,6 +7,5 @@ setup(
     install_requires=[
         'pandas',
         'numpy',
-        'math',
     ],
 )
