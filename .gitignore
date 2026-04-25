@@ -25,6 +25,10 @@ env/
 
 # OS
 .DS_Store
+Icon*
+
+# Sync
+.sync/
 
 # Jupyter
 .ipynb_checkpoints/
