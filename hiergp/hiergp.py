@@ -16,7 +16,7 @@ import pandas as pd
 # HierGP Main Class
 class hierGP:
 
-    def __init__(self, base_size: float, lonshift: float = 0, latshift: float = 0, silent: bool = True):
+    def __init__(self, base_size: float = 25, lonshift: float = 0, latshift: float = 0, silent: bool = True):
         
         """
         Main Constructor
@@ -171,5 +171,32 @@ class hierGP:
         y_indices = np.floor(norm_lat_values / self.delta_lat[level]).reshape(-1, 1)
 
         return np.concatenate((x_indices, y_indices), axis=1)
-    
 
+    def encode_cell_id(self, x: int, y: int, level: int) -> str:
+        """Return the canonical string ID for a cell."""
+        return f"{level}:{x}|{y}"
+
+    def decode_cell_id(self, cell_id: str) -> tuple:
+        """Parse a canonical cell ID back to (x, y, level)."""
+        level, xy = cell_id.split(':')
+        x, y = xy.split('|')
+        return int(x), int(y), int(level)
+
+    def cell_parent(self, x: int, y: int, level: int) -> tuple:
+        """Return the parent cell one level coarser. level must be > 1."""
+        if level <= 1:
+            raise ValueError("level must be > 1 to get a parent cell")
+        return x // 2, y // 2, level + 1
+
+    def cell_children(self, x: int, y: int, level: int) -> list:
+        """Return the four child cells one level finer. level must be < self.levels."""
+        if level >= self.levels:
+            raise ValueError("level must be < {} to get child cells".format(self.levels))
+        child_level = level - 1
+        bx, by = x * 2, y * 2
+        return [
+            (bx,     by,     child_level),
+            (bx + 1, by,     child_level),
+            (bx,     by + 1, child_level),
+            (bx + 1, by + 1, child_level),
+        ]
