@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from math import floor, sqrt
 from os.path import join
 
 # Set the random seed for reproducibility

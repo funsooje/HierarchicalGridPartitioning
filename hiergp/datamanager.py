@@ -295,20 +295,20 @@ class dataManager:
         # Compute positions of vertical and horizontal grid lines on plot
         linewidth = 0.1  # have all grid lines the same width
         # Get the boundary values
-        buffer = self.delta_lat
+        buffer = self.hgp.delta_lat[0]
         leftmost_long_value, rightmost_long_value = abs(min(longs)) + buffer, max(longs) + buffer
         bottommost_lat_value, topmost_lat_value = abs(min(lats)) + buffer, max(lats) + buffer
 
         # Create the array 0 to boundary for negative values and then reverse ordering for concatenation with positives
-        min_range_long = np.arange(0, leftmost_long_value, self.delta_long)[::-1] * -1
-        min_range_lat = np.arange(0, bottommost_lat_value, self.delta_long)[::-1] * -1
+        min_range_long = np.arange(0, leftmost_long_value, self.hgp.delta_lon[0])[::-1] * -1
+        min_range_lat = np.arange(0, bottommost_lat_value, self.hgp.delta_lon[0])[::-1] * -1
 
         # Drop the last value of 0 from each negative list so only 1 appears in final tick positions lists
         min_range_long, min_range_lat = min_range_long[:-1], min_range_lat[:-1]
 
         # Create the array 0 to boundary for positive values
-        max_range_long = np.arange(0, rightmost_long_value, self.delta_long)
-        max_range_lat = np.arange(0, topmost_lat_value, self.delta_long)
+        max_range_long = np.arange(0, rightmost_long_value, self.hgp.delta_lon[0])
+        max_range_lat = np.arange(0, topmost_lat_value, self.hgp.delta_lon[0])
 
         # Concatenate negative and positive lists into one
         long_range = np.concatenate((min_range_long, max_range_long))

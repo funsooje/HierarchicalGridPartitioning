@@ -1,2 +1,30 @@
-Data
-*pycache*
+# Data
+data/
+Data/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.code-workspace
+
+# OS
+.DS_Store
+
+# Jupyter
+.ipynb_checkpoints/

@@ -42,7 +42,7 @@ class hierGP:
         self.lat_per_deg = (self.polar_radius * math.pi) / 180
 
         self.epicenterLat = latshift
-        self.epicenterLon = latshift
+        self.epicenterLon = lonshift
         self.measurement_sensitivity = 20
 
         self.delta_lat = []

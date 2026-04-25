@@ -1,7 +1,6 @@
-import utils as ut
-from hiergp.hiergp import hierGP, dataManager
 import os
-import matplotlib.pyplot as plt
+from hiergp import utils as ut
+from hiergp.datamanager import dataManager
 
 # Tasks to perform
 generate = True
